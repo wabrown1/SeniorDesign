@@ -1,40 +1,16 @@
-// Fixed Sampling - BioAmp EXG Pill
-// https://github.com/upsidedownlabs/BioAmp-EXG-Pill
-
-// Upside Down Labs invests time and resources providing this open source code,
-// please support Upside Down Labs and open-source hardware by purchasing
-// products from Upside Down Labs!
-
-// Copyright (c) 2021 Upside Down Labs - contact@upsidedownlabs.tech
-
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
 
 #define SAMPLE_RATE 125
 #define BAUD_RATE 115200
 #define INPUT_PIN A0
 
 #define ONBOARD_LED 2
+// high voltage from microcontroller, should be 3.3 or 5 volts
+#define HIGH_VOLTAGE  5.0
 
 int timer1 = millis();
 bool LED_State = LOW;
 int sampleCount = 0;
-short period = 100;
+int period = 5;
 float sumLow = 0;
 float sumHigh = 0;
 float averageLow = 0;
@@ -74,9 +50,9 @@ float MovingAverage() {
   MAFIndex = (MAFIndex + 1) % WINDOW_SIZE;
   // returns the average of the values in the MAF window
 
-  float MAFSample = ((MAFSum / WINDOW_SIZE) * 3.3) / 4096;
+  float MAFSample = ((MAFSum / WINDOW_SIZE) * HIGH_VOLTAGE) / 4096;
   return MAFSample;
-  // return ((MAFSum / WINDOW_SIZE) * 3.3) / 4096;
+  // return ((MAFSum / WINDOW_SIZE) * HIGH_VOLTAGE) / 4096;
   //return MAFSum/WINDOW_SIZE;
 
 }
@@ -92,14 +68,15 @@ void loop() {
       State = SampleLow;
       break;
     case SampleLow:
+      /*if ((period * sampleCount) < 5000) { // sample for 5 seconds*/
       if ((period * sampleCount) < 5000) { // sample for 5 seconds
         if ((millis() - timer1) > period) {
           //LED_State = !LED_State;
           //digitalWrite(ONBOARD_LED,LED_State);
-          float sensor_value = (analogRead(INPUT_PIN) * 3.3) / 4096;
+          float sensor_value = (analogRead(INPUT_PIN) * HIGH_VOLTAGE) / 4096;
           sumLow   += sensor_value;
           sampleCount++;
-          Serial.println(sensor_value);
+          //Serial.println(sensor_value);
           timer1 = millis();
         }
         if ((period * sampleCount) == 5000) {
@@ -119,10 +96,10 @@ void loop() {
         if ((millis() - timer1) > period) {
           //LED_State = !LED_State;
           //digitalWrite(ONBOARD_LED,LED_State);
-          float sensor_value = (analogRead(INPUT_PIN) * 3.3) / 4096;
+          float sensor_value = (analogRead(INPUT_PIN) * HIGH_VOLTAGE) / 4096;
           sumHigh += sensor_value;
           sampleCount++;
-          Serial.println(sensor_value);
+          //Serial.println(sensor_value);
           timer1 = millis();
         }
         if ((period * sampleCount) == 5000) {
@@ -136,15 +113,21 @@ void loop() {
         }
         break;
       case Running:
-        if ((millis() - timer1) > 300) {
-          Serial.print("MAF Sample: ");
+        if ((millis() - timer1) > period) {
+          //Serial.print("MAF Sample: ");
           float MAFSample = MovingAverage();
-          Serial.println(MAFSample);
+          //Serial.println(MAFSample);
+          //Serial.print("Window values: ");
+          // print values in window that are to be averaged
+          /*for (int i = 0; i < WINDOW_SIZE; i++) {
+            //Serial.print((window[i]*HIGH_VOLTAGE)/4096);
+            Serial.println(" ");
+          }*/
           // turn on led if muscle is being flexed
-          if(MAFSample > abs((averageHigh)/1.1)){
+          if (MAFSample > abs((averageHigh) / 1/*1.1*/)) {
             digitalWrite(ONBOARD_LED, HIGH);
           }
-          else{
+          else {
             digitalWrite(ONBOARD_LED, LOW);
           }
           timer1 = millis();
