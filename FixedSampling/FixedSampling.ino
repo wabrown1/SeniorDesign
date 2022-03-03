@@ -21,9 +21,11 @@ enum {Waiting, SampleLow, SampleHigh, Running} State;
 // Moving average filter varaibles
 # define WINDOW_SIZE 5
 // window to hold to the values to be averaged for the MAF
-int window[WINDOW_SIZE];
+float window[WINDOW_SIZE];
+//int window[WINDOW_SIZE];
 int MAFIndex = 0;
-long MAFSum = 0;
+//long MAFSum = 0;
+float MAFSum = 0;
 
 void setup() {
   // Serial connection begin
@@ -39,28 +41,39 @@ void setup() {
   }
 }
 
-float MovingAverage() {
+float MovingAverage(float sample) {
   // remove old sample from MAFSum before adding in the new sample
   MAFSum = MAFSum - window[MAFIndex];
   // set current window index to the value from the input pin
-  window[MAFIndex] = analogRead(INPUT_PIN);
+  window[MAFIndex] = sample;
+  //window[MAFIndex] = analogRead(INPUT_PIN);
   // Add the new sample to the MAF Sum
   MAFSum += window[MAFIndex];
   // Update the window index, resets back to 0 if MAFIndex > WINDOW_SIZE
   MAFIndex = (MAFIndex + 1) % WINDOW_SIZE;
   // returns the average of the values in the MAF window
 
-  float MAFSample = ((MAFSum / WINDOW_SIZE) * HIGH_VOLTAGE) / 4096;
-  return MAFSample;
-  // return ((MAFSum / WINDOW_SIZE) * HIGH_VOLTAGE) / 4096;
-  //return MAFSum/WINDOW_SIZE;
+  // output for given sample in voltage units
+  return MAFSum / WINDOW_SIZE;
+  // output for sample read directly from analog input pin
+  //float MAFSample = ((MAFSum / WINDOW_SIZE) * HIGH_VOLTAGE) / 4096;
+  //return MAFSample;
+}
 
+// Reads the value from the specified input pin and converts the value
+// to voltage
+float Sample(int inputPin){
+  return (analogRead(inputPin)*HIGH_VOLTAGE)/4096;
+}
+
+// Subtracts the DC offset (average low) and takes the absolute
+// value of the sample 
+float Rectify(float sample){
+  sample -= averageLow;
+  return abs(sample);
 }
 
 
-
-
-// add moving average filter at each sample state
 void loop() {
   // state machine to control sampling and motor output
   switch (State) {
@@ -71,8 +84,6 @@ void loop() {
       /*if ((period * sampleCount) < 5000) { // sample for 5 seconds*/
       if ((period * sampleCount) < 5000) { // sample for 5 seconds
         if ((millis() - timer1) > period) {
-          //LED_State = !LED_State;
-          //digitalWrite(ONBOARD_LED,LED_State);
           float sensor_value = (analogRead(INPUT_PIN) * HIGH_VOLTAGE) / 4096;
           sumLow   += sensor_value;
           sampleCount++;
@@ -94,8 +105,6 @@ void loop() {
       // find average high EMG value
       if ((period * sampleCount) < 5000) { // sample for 5 seconds
         if ((millis() - timer1) > period) {
-          //LED_State = !LED_State;
-          //digitalWrite(ONBOARD_LED,LED_State);
           float sensor_value = (analogRead(INPUT_PIN) * HIGH_VOLTAGE) / 4096;
           sumHigh += sensor_value;
           sampleCount++;
@@ -103,7 +112,7 @@ void loop() {
           timer1 = millis();
         }
         if ((period * sampleCount) == 5000) {
-          digitalWrite(ONBOARD_LED, LOW);  // turn led on when done sampling for calculating the low average
+          digitalWrite(ONBOARD_LED, LOW);  // turn led on when done sampling for calculating the high average
           averageHigh = sumHigh / sampleCount;
           Serial.print("Average High: ");
           Serial.println(averageHigh);
@@ -115,8 +124,16 @@ void loop() {
       case Running:
         if ((millis() - timer1) > period) {
           //Serial.print("MAF Sample: ");
-          float MAFSample = MovingAverage();
-          //Serial.println(MAFSample);
+          float sample = Sample(INPUT_PIN);
+          //Serial.print("Voltage sample: ");
+          //Serial.println(sample);
+          sample = Rectify(sample);
+          //Serial.print("Rectified sample: ");
+          //Serial.println(sample);
+          float MAFSample = MovingAverage(sample);
+          //50Hz - 150Hz
+          Serial.print("MAF sample: ");
+          Serial.println(MAFSample);
           //Serial.print("Window values: ");
           // print values in window that are to be averaged
           /*for (int i = 0; i < WINDOW_SIZE; i++) {
@@ -124,7 +141,7 @@ void loop() {
             Serial.println(" ");
           }*/
           // turn on led if muscle is being flexed
-          if (MAFSample > abs((averageHigh) / 1/*1.1*/)) {
+          if (MAFSample > abs(averageHigh-averageLow)/*1.1*/) {
             digitalWrite(ONBOARD_LED, HIGH);
           }
           else {

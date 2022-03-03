@@ -1,3 +1,8 @@
+#define INPUT_PIN A0
+#define HIGH_VOLTAGE 3.3
+
+long timer1 = millis();
+
 void setup()
 {
   Serial.begin(115200);
@@ -5,8 +10,16 @@ void setup()
 
 void loop()
 {
-  float sensor_value = (analogRead(A0) * 5.0) / 4096;
-  Serial.println(sensor_value);
+  // 2 kHz sampling rate
+  if((millis() - timer1) > 2){
+    float sensor_value = (analogRead(INPUT_PIN) * HIGH_VOLTAGE) / 4095;
+    //Serial.println(sensor_value);
+    Serial.println(sensor_value);
+    timer1 = millis();
+  }
+  
+  //float sensor_value = (analogRead(A0) * 5.0) / 4096;
+  //Serial.println(sensor_value);
 
   //float sensorValue = analogRead(A0);
   //Serial.println(sensorValue);
