@@ -137,8 +137,8 @@ void loop() {
           float filteredSignal = EMGFilter(sensor_value);
           filteredSignal = abs(filteredSignal);
           float MAFSignal = MovingAverage(filteredSignal);
-          //sumHigh += MAFSignal;
-          sumHigh += filteredSignal;
+          sumHigh += MAFSignal;
+          //sumHigh += filteredSignal;
           sampleCount++;
           //Serial.println(sensor_value);
           sampleTimer = millis();
@@ -166,12 +166,12 @@ void loop() {
         float MAFSignal = MovingAverage(filteredSignal);
         //Serial.println(filteredSignal);
         //Serial.println(MAFSignal);
-        //Serial.println(MAFSignal*20);
-        Serial.println(filteredSignal*20);
+        Serial.println(MAFSignal*20);
+        //Serial.println(filteredSignal*20);
 
         // turn on led (punch) if signal amplitude is greater than 50% of average high
-        //if (MAFSignal > (averageHigh / 2)) {
-        if (filteredSignal > (averageHigh / 2)) {
+        if (MAFSignal > (averageHigh / 2)) {
+        //if (filteredSignal > (averageHigh / 2)) {
           digitalWrite(ONBOARD_LED, HIGH);
         }
         else {
