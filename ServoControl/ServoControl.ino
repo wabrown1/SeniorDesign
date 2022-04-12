@@ -1,78 +1,103 @@
-/*
- * Created by ArduinoGetStarted.com
- *
- * This example code is in the public domain
- *
- * Tutorial page: https://arduinogetstarted.com/faq/how-to-control-speed-of-servo-motor
- */
 
 #include <ESP32Servo.h>
-//#include <Servo.h>
-
-Servo myServo;
-unsigned long MOVING_TIME = 3000; // moving time is 3 seconds
-unsigned long moveStartTime;
-int startAngle = 30; // 30°
-int stopAngle  = 90; // 90°
-
-void setup() {
-  myServo.attach(9);
-  moveStartTime = millis(); // start moving
-
-  // TODO: other code
-}
-
-void loop() {
-  unsigned long progress = millis() - moveStartTime;
-
-  if (progress <= MOVING_TIME) {
-    long angle = map(progress, 0, MOVING_TIME, startAngle, stopAngle);
-    myServo.write(angle); 
-  }
-
-  // TODO: other code
-}
-
-
-
-
-
-/*#include <ESP32Servo.h>
 
 Servo myservo;  // create servo object to control a servo
+// twelve servo objects can be created on most boards
 
-// Recommended PWM GPIO pins on the ESP32 include 2,4,12-19,21-23,25-27,32-33
-int servoPin = 13;
-long timer1 = millis();
-bool flag = 0;
-int angle = 0;
+int servoPosition = 0;
+int pos = 0;    // variable to store the servo position
 
 void setup() {
-  //pinMode(servoPin, OUTPUT);
-  myservo.setPeriodHertz(50);
-  myservo.attach(servoPin);
+  myservo.attach(13);  // attaches the servo on pin 13 to the servo object
 }
 
 void loop() {
-
-  
-
-
-
-  // Sweep from 0 to 180 degrees:
-  /*for (angle = 0; angle <= 180; angle += 1) {
-    myservo.write(angle);
-    delay(5);
+  for (pos = 0; pos <= 180; pos += 1) { // goes from 0 degrees to 180 degrees
+    // in steps of 1 degree
+    myservo.write(pos);              // tell servo to go to position in variable 'pos'
+    delay(3);                       // waits 15ms for the servo to reach the position
   }
-  // And back from 180 to 0 degrees:
-  for (angle = 180; angle >= 0; angle -= 1) {
-    myservo.write(angle);
-    delay(30);
-  }*/
+  for (pos = 180; pos >= 0; pos -= 1) { // goes from 180 degrees to 0 degrees
+    myservo.write(pos);              // tell servo to go to position in variable 'pos'
+    delay(15);                       // waits 15ms for the servo to reach the position
+  }
+  delay(1);
+}
+
+// run on every iteration of main loop in filter fsm
+void MoveServo(float sig, float avgHigh) {
+  int steps = 10; // number of loop iterations to perform each time
+  float speedDelay = 1;
+  float maxDelay = 3;
+
+  // return to starting position if the user is not flexing
+  if (sig < (avgHigh / 2) && (servoPosition > 0)) {
+    for (pos = servoPosition; pos >= servoPosition - steps; pos -= 1) { // goes from 0 degrees to 180 degrees
+      // in steps of 1 degree
+      if (pos >= 0) {
+        myservo.write(pos);              // tell servo to go to position in variable 'pos'
+      }
+      delay(2);
+    }
+  }
+  else {
+    if (sig >= avgHigh) { // 0 delay if the signal value is greater than the average high
+      speedDelay = 0;
+    }
+    else {
+      speedDelay = ((avgHigh - sig) / avgHigh) * maxDelay; // scale the delay between 0 and maxDelay
+    }
+    for (pos = servoPosition; pos <= servoPosition + steps; pos += 1) { // goes from 0 degrees to 180 degrees
+      // in steps of 1 degree
+      if (pos <= 180) {
+        myservo.write(pos);              // tell servo to go to position in variable 'pos'
+      }
+      delay(speedDelay);
+    }
+  }
+}
+
+
+/*
+
+  #include <ESP32Servo.h>
+
+  Servo myservo;  // create servo object to control a servo
+  // twelve servo objects can be created on most boards
+
+  int servoPin = 13;
+  int pos = 0;    // variable to store the servo position
+  long timer1 = millis();
+
+  void setup() {
+  // Allow allocation of all timers
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+  ESP32PWM::allocateTimer(2);
+  ESP32PWM::allocateTimer(3);
+  myservo.setPeriodHertz(50);    // standard 50 hz servo
+  myservo.attach(servoPin, 500, 2400); // attaches the servo on pin 18 to the servo object
+  // using default min/max of 1000us and 2000us
+  // different servos may require different min/max settings
+  // for an accurate 0 to 180 sweep
+
+  //myservo.attach(13);  // attaches the servo on pin 13 to the servo object
+  }
+
+  void loop() {
+
+  if ((millis() - timer1) > 500) {
+    for (pos = 0; pos <= 180; pos += 1) { // goes from 0 degrees to 180 degrees
+      // in steps of 1 degree
+      myservo.write(pos);              // tell servo to go to position in variable 'pos'
+      delay(1);                       // waits 15ms for the servo to reach the position
+    }
+    for (pos = 180; pos >= 0; pos -= 1) { // goes from 180 degrees to 0 degrees
+      myservo.write(pos);              // tell servo to go to position in variable 'pos'
+      delay(15);                       // waits 15ms for the servo to reach the position
+    }
+    timer1 = millis();
+  }
+
   //delay(1000);
-  /*
-    myservo.write(0);
-    delay(2000);
-    myservo.write(180);
-    delay(2000);*/
-//}*/
+  }*/
