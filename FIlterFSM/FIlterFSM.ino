@@ -1,3 +1,5 @@
+#include <ESP32Servo.h>
+
 #define SAMPLE_RATE 500
 #define BAUD_RATE 115200
 #define INPUT_PIN A0
@@ -6,7 +8,7 @@
 #define ONBOARD_LED 2
 
 // Moving average filter varaibles
-# define WINDOW_SIZE 15
+# define WINDOW_SIZE 50
 // window to hold to the values to be averaged for the MAF
 float window[WINDOW_SIZE];
 //int window[WINDOW_SIZE];
@@ -24,6 +26,13 @@ float averageHigh = 0;
 
 enum {Waiting, SampleHigh, Running} State;
 
+Servo myservo;  // create servo object to control a servo
+// twelve servo objects can be created on most boards
+int servoPeriod = 30; // call the MoveServo function every 30ms
+int servoTimer = 0;
+
+int servoPosition = 0; // variable to store the servo position
+
 void setup() {
   // Serial connection begin
   pinMode(ONBOARD_LED, OUTPUT);
@@ -31,6 +40,7 @@ void setup() {
   Serial.begin(BAUD_RATE);
   digitalWrite(ONBOARD_LED, LOW);
   State = Waiting;
+  myservo.attach(13);  // attaches the servo on pin 13 to the servo object
 }
 
 float MovingAverage(float sample) {
@@ -106,17 +116,51 @@ float Sample(int inputPin) {
 void CheckState() {
   if (Serial.available()) {
     int keyboardInput = Serial.read();
-    if (keyboardInput == 49) {
+    if (keyboardInput == 49) {  // 1
       State = Waiting;
       Serial.println("Waiting State");
     }
-    else if (keyboardInput == 50) {
+    else if (keyboardInput == 50) {// 2
       State = SampleHigh;
       Serial.println("Sample High State");
     }
-    else if (keyboardInput == 51) {
+    else if (keyboardInput == 51) {// 3
       State = Running;
       Serial.println("Running State");
+    }
+  }
+}
+
+// run on every iteration of main loop in filter fsm
+void MoveServo(float sig, float avgHigh) {
+  int steps = 10; // number of loop iterations to perform each time
+  float speedDelay = 1;
+  float maxDelay = 3;
+  int pos = 0;  
+
+  // return to starting position if the user is not flexing
+  if (sig < (avgHigh / 2) && (servoPosition > 0)) {
+    for (pos = servoPosition; pos >= servoPosition - steps; pos -= 1) { // goes from 0 degrees to 180 degrees
+      // in steps of 1 degree
+      if (pos >= 0) {
+        myservo.write(pos);              // tell servo to go to position in variable 'pos'
+      }
+      delay(2);
+    }
+  }
+  else {
+    if (sig >= avgHigh) { // 0 delay if the signal value is greater than the average high
+      speedDelay = 0;
+    }
+    else {
+      speedDelay = ((avgHigh - sig) / avgHigh) * maxDelay; // scale the delay between 0 and maxDelay
+    }
+    for (pos = servoPosition; pos <= servoPosition + steps; pos += 1) { // goes from 0 degrees to 180 degrees
+      // in steps of 1 degree
+      if (pos <= 180) {
+        myservo.write(pos);              // tell servo to go to position in variable 'pos'
+      }
+      delay(speedDelay);
     }
   }
 }
@@ -157,7 +201,8 @@ void loop() {
       break;
     case Running:
       CheckState();
-      
+      float servoSignal;
+
       if ((millis() - sampleTimer) > period) {
         float sensor_value = Sample(INPUT_PIN);
         //float sensor_value = (analogRead(INPUT_PIN) * HIGH_VOLTAGE) / 4095;
@@ -166,19 +211,26 @@ void loop() {
         float MAFSignal = MovingAverage(filteredSignal);
         //Serial.println(filteredSignal);
         //Serial.println(MAFSignal);
-        Serial.println(MAFSignal*20);
+        Serial.println(MAFSignal * 20);
         //Serial.println(filteredSignal*20);
 
         // turn on led (punch) if signal amplitude is greater than 50% of average high
-        if (MAFSignal > (averageHigh / 2)) {
-        //if (filteredSignal > (averageHigh / 2)) {
+        if (MAFSignal > (averageHigh / 3)) {
+          //if (filteredSignal > (averageHigh / 2)) {
           digitalWrite(ONBOARD_LED, HIGH);
         }
         else {
           digitalWrite(ONBOARD_LED, LOW);
         }
 
+        //MoveServo(MAFSignal, averageHigh); 
+        servoSignal = MAFSignal;
         sampleTimer = millis();
+      }
+
+      if((millis() - servoTimer) > servoPeriod){
+        MoveServo(servoSignal, averageHigh); 
+        servoTimer = millis();
       }
       break;
     default:
