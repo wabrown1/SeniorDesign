@@ -6,13 +6,14 @@ Servo myservo;  // create servo object to control a servo
 
 int servoPosition = 0;
 int pos = 0;    // variable to store the servo position
+int timer1 = 0;
 
 void setup() {
   myservo.attach(13);  // attaches the servo on pin 13 to the servo object
 }
 
 void loop() {
-  for (pos = 0; pos <= 180; pos += 1) { // goes from 0 degrees to 180 degrees
+  /*for (pos = 0; pos <= 180; pos += 1) { // goes from 0 degrees to 180 degrees
     // in steps of 1 degree
     myservo.write(pos);              // tell servo to go to position in variable 'pos'
     delay(3);                       // waits 15ms for the servo to reach the position
@@ -21,7 +22,20 @@ void loop() {
     myservo.write(pos);              // tell servo to go to position in variable 'pos'
     delay(15);                       // waits 15ms for the servo to reach the position
   }
-  delay(1);
+  delay(1);*/
+
+  myservo.write(pos);
+  if((millis() - timer1) > 6000){
+    if(pos == 180){
+      pos = 0;
+      //myservo.write(pos);
+    }
+    else{
+      pos = 180;
+     // myservo.write(0);
+    }
+    timer1 = millis();
+  }
 }
 
 // run on every iteration of main loop in filter fsm
