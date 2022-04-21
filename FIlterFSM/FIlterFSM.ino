@@ -8,7 +8,7 @@
 #define ONBOARD_LED 2
 
 // Moving average filter varaibles
-# define WINDOW_SIZE 20
+# define WINDOW_SIZE 50
 // window to hold to the values to be averaged for the MAF
 float window[WINDOW_SIZE];
 //int window[WINDOW_SIZE];
@@ -28,8 +28,10 @@ enum {Waiting, SampleHigh, Running} State;
 
 Servo myservo;  // create servo object to control a servo
 // twelve servo objects can be created on most boards
-int servoPeriod = 1000; // call the MoveServo function every 30ms
-int servoTimer = 0;
+int servoPeriod = 5; // call the MoveServo function every servoPeriod ms
+long servoTimer = 0;
+long notFlexedTimer = 0;
+bool notFlexedFlag = false;
 
 int servoPosition = 0; // variable to store the servo position
 
@@ -122,8 +124,6 @@ void CheckState() {
     }
     else if (keyboardInput == 50) {// 2
       State = SampleHigh;
-      //sampleCount = 0;  // restart sampling
-      //sumHigh = 0;      // reset average high calculation
       Serial.println("Sample High State");
     }
     else if (keyboardInput == 51) {// 3
@@ -135,7 +135,7 @@ void CheckState() {
 
 // run on every iteration of main loop in filter fsm
 void MoveServo(float sig, float avgHigh) {
-  /*int steps = 3; // number of loop iterations to perform each time
+  /*int steps = 10; // number of loop iterations to perform each time
     float speedDelay = 1;
     float maxDelay = 3;
     int pos = 0;
@@ -165,32 +165,41 @@ void MoveServo(float sig, float avgHigh) {
       delay(speedDelay);
     }
     }*/
-  /*
-    int pos = 0;
-    if (sig > (avgHigh / 2)) {
-    for (pos = 0; pos <= 180; pos += 1) { // goes from 0 degrees to 180 degrees
-    // in steps of 1 degree
-    myservo.write(pos);              // tell servo to go to position in variable 'pos'
-    }
-    }
-    else {
-    for (pos = 180; pos >= 0; pos -= 1) { // goes from 180 degrees to 0 degrees
-    myservo.write(pos);              // tell servo to go to position in variable 'pos'
-    delay(3);                       // waits 15ms for the servo to reach the position
-    }
-    }*/
-  if ((sig > (.5 * avgHigh)) && (servoPosition <= 175)) {
+
+  // Speed Thresholds
+  // Adjust the servo speed by chaning the servoPeriod based on the signal amplitude
+  if ((sig > (avgHigh * .5)) && (servoPosition <= 25)) {
     servoPosition += 5;
-    myservo.write(servoPosition);
-    Serial.print("Flexed, writing to position ");
-    Serial.println(servoPosition);
+    notFlexedFlag = false;   
+
+     if(sig >= avgHigh){
+      servoPeriod = 0;
+     }     
+     else{
+      // Scales the servoPeriod between 0 and 8 ms
+      servoPeriod = (1 -(sig/avgHigh))*8;
+     }
   }
-  else if ((sig < (.5 * avgHigh)) && (servoPosition >= 5)) {
-    servoPosition -= 5;
-    myservo.write(servoPosition);
-    Serial.print("Not flexed, writing to position ");
-    Serial.println(servoPosition);
+
+  
+  else if ((sig < (avgHigh * .4)) && (servoPosition >= 5)) {  // not flexed
+    if(!notFlexedFlag){
+      notFlexedFlag = true;     
+      notFlexedTimer = millis();      
+    }
+    else{ // if a notflexed state was previously detected
+      // move the servo back to starting position if 500ms have gone by without detecting a flex
+      if((millis() - notFlexedTimer) > 500){
+        servoPosition = 0;
+        myservo.write(servoPosition);
+        notFlexedTimer = millis();
+        notFlexedFlag = false;
+      }
+    }
+    //servoPosition -= 5;
   }
+  myservo.write(servoPosition);
+
 
 }
 
@@ -244,11 +253,9 @@ void loop() {
         //Serial.println(filteredSignal*20);
 
         // turn on led (punch) if signal amplitude is greater than 50% of average high
-        if (MAFSignal > (averageHigh / 2)) {
+        if (MAFSignal > (.6 * averageHigh)) {
           //if (filteredSignal > (averageHigh / 2)) {
           digitalWrite(ONBOARD_LED, HIGH);
-          //Serial.print("Flexed, MAF Signal: ");
-          //Serial.println(MAFSignal);
         }
         else {
           digitalWrite(ONBOARD_LED, LOW);
@@ -256,21 +263,17 @@ void loop() {
 
         //MoveServo(MAFSignal, averageHigh);
         servoSignal = MAFSignal;
-        //MoveServo(servoSignal, averageHigh);
         sampleTimer = millis();
       }
 
       if ((millis() - servoTimer) > servoPeriod) {
-        //MoveServo(servoSignal, averageHigh);
-        Serial.print("MAF Signal: ");
-        Serial.println(servoSignal);
+        MoveServo(servoSignal, averageHigh);
         servoTimer = millis();
       }
 
       break;
     default:
       State = Waiting;
-      Serial.println("Waiting State");
       CheckState();
       break;
   }
