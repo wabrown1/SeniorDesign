@@ -28,7 +28,7 @@ enum {Waiting, SampleHigh, Running} State;
 
 Servo myservo;  // create servo object to control a servo
 // twelve servo objects can be created on most boards
-int servoPeriod = 5; // call the MoveServo function every servoPeriod ms
+int servoPeriod = 2; // call the MoveServo function every servoPeriod ms
 long servoTimer = 0;
 long notFlexedTimer = 0;
 bool notFlexedFlag = false;
@@ -170,26 +170,26 @@ void MoveServo(float sig, float avgHigh) {
   // Adjust the servo speed by chaning the servoPeriod based on the signal amplitude
   if ((sig > (avgHigh * .5)) && (servoPosition <= 25)) {
     servoPosition += 5;
-    notFlexedFlag = false;   
+    notFlexedFlag = false;
 
-     if(sig >= avgHigh){
+    /*if (sig >= avgHigh) {
       servoPeriod = 0;
-     }     
-     else{
-      // Scales the servoPeriod between 0 and 8 ms
-      servoPeriod = (1 -(sig/avgHigh))*8;
-     }
+    }
+    else {
+      // Scales the servoPeriod between 0 and 4 ms
+      servoPeriod = (1 - (sig / avgHigh)) * 8;
+    }*/
   }
 
-  
+
   else if ((sig < (avgHigh * .4)) && (servoPosition >= 5)) {  // not flexed
-    if(!notFlexedFlag){
-      notFlexedFlag = true;     
-      notFlexedTimer = millis();      
+    if (!notFlexedFlag) {
+      notFlexedFlag = true;
+      notFlexedTimer = millis();
     }
-    else{ // if a notflexed state was previously detected
+    else { // if a notflexed state was previously detected
       // move the servo back to starting position if 500ms have gone by without detecting a flex
-      if((millis() - notFlexedTimer) > 500){
+      if ((millis() - notFlexedTimer) > 500) {
         servoPosition = 0;
         myservo.write(servoPosition);
         notFlexedTimer = millis();
@@ -199,7 +199,6 @@ void MoveServo(float sig, float avgHigh) {
     //servoPosition -= 5;
   }
   myservo.write(servoPosition);
-
 
 }
 
@@ -270,6 +269,7 @@ void loop() {
         MoveServo(servoSignal, averageHigh);
         servoTimer = millis();
       }
+      //MoveServo(servoSignal, averageHigh);
 
       break;
     default:
