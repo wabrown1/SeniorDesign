@@ -6,6 +6,7 @@ long timer1 = millis();
 void setup()
 {
   Serial.begin(115200);
+  pinMode(INPUT_PIN,INPUT);
 }
 
 void loop()
@@ -32,5 +33,5 @@ void loop()
     Serial.print(millivolt*1000);
     Serial.println(" mV");
     Serial.println("");*/
-  delay(1);
+  //delay(1);
 }

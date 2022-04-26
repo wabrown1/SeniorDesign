@@ -1,14 +1,15 @@
 #include <ESP32Servo.h>
 
 #define SAMPLE_RATE 500
-#define BAUD_RATE 115200
-#define INPUT_PIN A0
+//#define BAUD_RATE 115200
+#define BAUD_RATE 9600
+#define INPUT_PIN A7
 
 #define HIGH_VOLTAGE  3.3
-#define ONBOARD_LED 2
+#define ONBOARD_LED 13
 
 // Moving average filter varaibles
-# define WINDOW_SIZE 50
+# define WINDOW_SIZE 25
 // window to hold to the values to be averaged for the MAF
 float window[WINDOW_SIZE];
 //int window[WINDOW_SIZE];
@@ -35,6 +36,12 @@ bool notFlexedFlag = false;
 
 int servoPosition = 0; // variable to store the servo position
 
+long stateTimer = 0;
+long blinkLEDTimer = 0;
+bool ledState = 0;
+
+bool prevButtonPressed = false;
+
 void setup() {
   // Serial connection begin
   pinMode(ONBOARD_LED, OUTPUT);
@@ -42,7 +49,7 @@ void setup() {
   Serial.begin(BAUD_RATE);
   digitalWrite(ONBOARD_LED, LOW);
   State = Waiting;
-  myservo.attach(13);  // attaches the servo on pin 13 to the servo object
+  myservo.attach(4);  // attaches the servo on pin 13 to the servo object
 }
 
 float MovingAverage(float sample) {
@@ -116,20 +123,41 @@ float Sample(int inputPin) {
 // keyboard input 2 -> 50
 // keyboard input 3 -> 51
 void CheckState() {
-  if (Serial.available()) {
-    int keyboardInput = Serial.read();
-    if (keyboardInput == 49) {  // 1
+  if (digitalRead(0)) {
+    prevButtonPressed = false;
+  }
+  switch (State) {
+    case Waiting:
+      if (!digitalRead(0) && !prevButtonPressed) {
+        State = SampleHigh;
+        Serial.println("Sample High State");
+        Serial.println("TEST");
+        prevButtonPressed = true;
+      }
+      break;
+    case SampleHigh:
+      if (!digitalRead(0) && !prevButtonPressed) {
+        State = Running;
+        Serial.println("Running State");
+        prevButtonPressed = true;
+      }
+      break;
+    case Running:
+      if (!digitalRead(0) && !prevButtonPressed) {
+        State = SampleHigh;
+        Serial.println("Sample High State");
+        prevButtonPressed = true;
+        // reset average high variables before returning to sample high state
+        sampleCount = 0;
+        sumHigh = 0;
+        averageHigh = 0;
+        MAFIndex = 0;
+        MAFSum = 0;
+      }
+      break;
+    default:
       State = Waiting;
-      Serial.println("Waiting State");
-    }
-    else if (keyboardInput == 50) {// 2
-      State = SampleHigh;
-      Serial.println("Sample High State");
-    }
-    else if (keyboardInput == 51) {// 3
-      State = Running;
-      Serial.println("Running State");
-    }
+      break;
   }
 }
 
@@ -205,6 +233,10 @@ void MoveServo(float sig, float avgHigh) {
 }
 
 void loop() {
+  /*if ((millis() - stateTimer) > 200) {
+    CheckState();
+    stateTimer = millis();
+    }*/
   //Serial.println(State); // debug to check state switching from keyboard works
   switch (State) {
     case Waiting:
@@ -212,7 +244,21 @@ void loop() {
       break;
     case SampleHigh:
       CheckState();
-      digitalWrite(ONBOARD_LED, HIGH); // turn on led when in sample high state
+      // flash an LED to know you are in the sampling state
+      if ((millis() - blinkLEDTimer) > 500) {
+        ledState = !ledState;
+        //digitalWrite(ONBOARD_LED, ledState);
+        if (ledState) {
+          digitalWrite(ONBOARD_LED, HIGH);
+        }
+        else {
+          digitalWrite(ONBOARD_LED, LOW);
+        }
+        blinkLEDTimer = millis();
+      }
+
+      //CheckState();
+      //digitalWrite(ONBOARD_LED, HIGH); // turn on led when in sample high state
       // find average high EMG value
       if ((period * sampleCount) < 5000) { // sample for 5 seconds
         if ((millis() - sampleTimer) > period) {
@@ -249,7 +295,8 @@ void loop() {
         filteredSignal = abs(filteredSignal);
         float MAFSignal = MovingAverage(filteredSignal);
         //Serial.println(filteredSignal);
-        //Serial.println(MAFSignal);
+        Serial.print("MAF Signal: ");
+        Serial.println(MAFSignal);
         //Serial.println(MAFSignal * 20);
         //Serial.println(filteredSignal*20);
 
@@ -271,6 +318,7 @@ void loop() {
         MoveServo(servoSignal, averageHigh);
         servoTimer = millis();
         }*/
+
       MoveServo(servoSignal, averageHigh);
 
       break;
@@ -279,5 +327,4 @@ void loop() {
       CheckState();
       break;
   }
-
 }
