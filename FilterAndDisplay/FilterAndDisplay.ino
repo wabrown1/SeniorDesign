@@ -33,7 +33,7 @@
 #define ONBOARD_LED 2
 
 // Moving average filter varaibles
-# define WINDOW_SIZE 5
+# define WINDOW_SIZE 2000
 // window to hold to the values to be averaged for the MAF
 float window[WINDOW_SIZE];
 //int window[WINDOW_SIZE];
@@ -46,19 +46,20 @@ long timer1 = millis();
 void setup() {
   // Serial connection begin
   pinMode(ONBOARD_LED, OUTPUT);
+  pinMode(INPUT_PIN, INPUT);
   Serial.begin(BAUD_RATE);
 }
 
 void loop() {
   // Calculate elapsed time
-  static unsigned long past = 0;
-  unsigned long present = micros();
-  unsigned long interval = present - past;
-  past = present;
+  /*static unsigned long past = 0;
+    unsigned long present = micros();
+    unsigned long interval = present - past;
+    past = present;
 
-  // Run timer
-  static long timer = 0;
-  timer -= interval;
+    // Run timer
+    static long timer = 0;
+    timer -= interval;*/
 
   // Sample
   /*if (timer < 0) {
@@ -66,7 +67,7 @@ void loop() {
     float sensor_value = (analogRead(INPUT_PIN) * 3.3) / 4095;
     float filteredSignal = EMGFilter(sensor_value);
     Serial.println(filteredSignal);
-  }*/
+    }*/
 
   if ((millis() - timer1) > 2) {
     float sensor_value = (analogRead(INPUT_PIN) * HIGH_VOLTAGE) / 4095;
@@ -74,15 +75,21 @@ void loop() {
     filteredSignal = abs(filteredSignal);
     float MAFSignal = MovingAverage(filteredSignal);
     //Serial.println(filteredSignal);
-    Serial.println(MAFSignal);
+    /*Serial.print("Raw Signal: ");
+    Serial.println(sensor_value);
+    Serial.print("Filtered Signal: ");
+    Serial.println(filteredSignal, 4);
+    Serial.print("MAFSignal: ");
+    Serial.println(MAFSignal, 4);*/
+    Serial.println(MAFSignal, 4);
 
-    if(MAFSignal > .1){
+    if (MAFSignal > .1) {
       digitalWrite(ONBOARD_LED, HIGH);
     }
-    else{
+    else {
       digitalWrite(ONBOARD_LED, LOW);
     }
-    
+
     timer1 = millis();
   }
 
