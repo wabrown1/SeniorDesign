@@ -68,6 +68,7 @@ void loop() {
 void callback(char* topic, byte* payload, unsigned int length) {
   // get a number out of servoString
   int input = 0;
+  // string to int
   for(int i = 0; i < length; i++){
     input += ((uint8_t)payload[i] - 48) * pow(10, length - 1 - i);
   }
