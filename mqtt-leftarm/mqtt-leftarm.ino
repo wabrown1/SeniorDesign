@@ -14,7 +14,7 @@ PubSubClient client(espClient);
 #define BAUD_RATE 9600
 
 #define INPUT_PIN A7 // channel 1 input
-// #define INPUT_PIN A9 // channel 2 input
+#define INPUT_PIN2 A9 // channel 2 input
 
 #define HIGH_VOLTAGE  3.3
 #define ONBOARD_LED 13
@@ -23,10 +23,12 @@ PubSubClient client(espClient);
 # define WINDOW_SIZE 25
 // window to hold to the values to be averaged for the MAF
 float window[WINDOW_SIZE];
-//int window[WINDOW_SIZE];
+float window2[WINDOW_SIZE];
 int MAFIndex = 0;
+int MAFIndex2 = 0;
 //long MAFSum = 0;
 float MAFSum = 0;
+float MAFSum2 = 0;
 
 long sampleTimer = millis();
 
@@ -35,6 +37,9 @@ int period = 2; // sample rate of 500 Hz
 int sampleCount = 0;
 float sumHigh = 0;
 float averageHigh = 0;
+
+float sumHigh2 = 0;
+float averageHigh2 = 0;
 
 enum {Waiting, SampleHigh, Running} State;
 
@@ -58,6 +63,7 @@ void setup() {
   // Serial connection begin
   pinMode(ONBOARD_LED, OUTPUT);
   pinMode(INPUT_PIN, INPUT);
+  pinMode(INPUT_PIN2, INPUT);
   Serial.begin(BAUD_RATE);
   digitalWrite(ONBOARD_LED, LOW);
   State = Waiting;
@@ -94,6 +100,25 @@ float MovingAverage(float sample) {
 
   // output for given sample in voltage units
   return MAFSum / WINDOW_SIZE;
+  // output for sample read directly from analog input pin
+  //float MAFSample = ((MAFSum / WINDOW_SIZE) * HIGH_VOLTAGE) / 4096;
+  //return MAFSample;
+}
+
+float MovingAverage2(float sample) {
+  // remove old sample from MAFSum before adding in the new sample
+  MAFSum2 = MAFSum2 - window2[MAFIndex];
+  // set current window index to the value from the input pin
+  window2[MAFIndex] = sample;
+  //window[MAFIndex] = analogRead(INPUT_PIN);
+  // Add the new sample to the MAF Sum
+  MAFSum2 += window2[MAFIndex];
+  // Update the window index, resets back to 0 if MAFIndex > WINDOW_SIZE
+  MAFIndex2 = (MAFIndex2 + 1) % WINDOW_SIZE;
+  // returns the average of the values in the MAF window
+
+  // output for given sample in voltage units
+  return MAFSum2 / WINDOW_SIZE;
   // output for sample read directly from analog input pin
   //float MAFSample = ((MAFSum / WINDOW_SIZE) * HIGH_VOLTAGE) / 4096;
   //return MAFSample;
@@ -181,6 +206,11 @@ void CheckState() {
         averageHigh = 0;
         MAFIndex = 0;
         MAFSum = 0;
+
+        sumHigh2 = 0;
+        averageHigh2 = 0;
+        MAFIndex2 = 0;
+        MAFSum2 = 0;
       }
       break;
     default:
@@ -268,19 +298,32 @@ void loop() {
       if ((period * sampleCount) < 5000) { // sample for 5 seconds
         if ((millis() - sampleTimer) > period) {
           float sensor_value = Sample(INPUT_PIN);
+          float sensor_value2 = Sample(INPUT_PIN2);
+
           float filteredSignal = EMGFilter(sensor_value);
+          float filteredSignal2 = EMGFilter(sensor_value2);
+
           filteredSignal = abs(filteredSignal);
+          filteredSignal2 = abs(filteredSignal2);
+
           float MAFSignal = MovingAverage(filteredSignal);
+          float MAFSignal2 = MovingAverage2(filteredSignal2);
+
           sumHigh += MAFSignal;
+          sumHigh2 += MAFSignal2;
+
           //sumHigh += filteredSignal;
           sampleCount++;
           //Serial.println(sensor_value);
+
           sampleTimer = millis();
         }
       }
       if ((period * sampleCount) == 5000) {
         digitalWrite(ONBOARD_LED, LOW);  // turn led on when done sampling for calculating the high average
         averageHigh = sumHigh / sampleCount;
+        averageHigh2 = sumHigh2 / sampleCount;
+
         Serial.print("Average High: ");
         Serial.println(averageHigh);
         sampleTimer = millis();
@@ -295,10 +338,18 @@ void loop() {
 
       if ((millis() - sampleTimer) > period) {
         float sensor_value = Sample(INPUT_PIN);
+        float sensor_value2 = Sample(INPUT_PIN2);
+
         //float sensor_value = (analogRead(INPUT_PIN) * HIGH_VOLTAGE) / 4095;
         float filteredSignal = EMGFilter(sensor_value);
+        float filteredSignal2 = EMGFilter(sensor_value2);
+
         filteredSignal = abs(filteredSignal);
+        filteredSignal2 = abs(filteredSignal2);
+
         float MAFSignal = MovingAverage(filteredSignal);
+        float MAFSignal2 = MovingAverage(filteredSignal2);
+
         //Serial.println(filteredSignal);
         Serial.print("MAF Signal: ");
         Serial.println(MAFSignal);
@@ -316,8 +367,17 @@ void loop() {
           client.publish("/reser/leftarm", "0");
         }
 
+        // Move base back and forth
+        if (MAFSignal2 > (.6 * averageHigh2)) {
+          //if (filteredSignal > (averageHigh / 2)) {
+          client.publish("/reser/bicep", "30");
+        }
+        else {
+          client.publish("/reser/bicep", "0");
+        }
+
         //MoveServo(MAFSignal, averageHigh);
-        servoSignal = MAFSignal;
+        //servoSignal = MAFSignal;
         sampleTimer = millis();
       }
 
