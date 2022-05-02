@@ -29,7 +29,7 @@ enum {Waiting, SampleHigh, Running} State;
 
 Servo myservo;  // create servo object to control a servo
 // twelve servo objects can be created on most boards
-int servoPeriod = 5; // call the MoveServo function every servoPeriod ms
+int servoPeriod = 3; // call the MoveServo function every servoPeriod ms
 long servoTimer = 0;
 long notFlexedTimer = 0;
 bool notFlexedFlag = false;

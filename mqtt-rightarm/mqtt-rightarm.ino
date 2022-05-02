@@ -192,6 +192,14 @@ void CheckState() {
 // run on every iteration of main loop in filter fsm
 void MoveServo(float sig, float avgHigh) {
   if ((millis() - servoTimer) > servoPeriod) {
+    if ((sig > (avgHigh * .9)) {
+      servoPosition = 40;
+    }
+    else if(sig < (avgHigh * .4)){
+      servoPosition = 0;
+    }
+
+    /*
     // Speed Thresholds
     // Adjust the servo speed by chaning the servoPeriod based on the signal amplitude
     if ((sig > (avgHigh * .6)) && (servoPosition <= 35)) {
@@ -216,15 +224,15 @@ void MoveServo(float sig, float avgHigh) {
         // move the servo back to starting position if 500ms have gone by without detecting a flex
         if ((millis() - notFlexedTimer) > 500) {
           servoPosition = 0;
-          sprintf(servoString, "%d", servoPosition);
-          client.publish("/reser/rightarm", servoString);
+          //sprintf(servoString, "%d", servoPosition);
+          //client.publish("/reser/rightarm", servoString);
           // myservo.write(servoPosition);
           notFlexedTimer = millis();
           notFlexedFlag = false;
         }
       }
       //servoPosition -= 5;
-    }
+    }*/
     // myservo.write(servoPosition);
     sprintf(servoString, "%d", servoPosition);
     Serial.print(servoPosition);
@@ -234,7 +242,7 @@ void MoveServo(float sig, float avgHigh) {
 
     servoTimer = millis();
   }
-}
+}// Move Servo
 
 void loop() {
   /*if ((millis() - stateTimer) > 200) {
