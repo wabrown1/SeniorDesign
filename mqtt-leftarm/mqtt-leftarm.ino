@@ -12,7 +12,9 @@ PubSubClient client(espClient);
 #define SAMPLE_RATE 500
 //#define BAUD_RATE 115200
 #define BAUD_RATE 9600
-#define INPUT_PIN A7
+
+#define INPUT_PIN A7 // channel 1 input
+// #define INPUT_PIN A9 // channel 2 input
 
 #define HIGH_VOLTAGE  3.3
 #define ONBOARD_LED 13
@@ -192,7 +194,7 @@ void MoveServo(float sig, float avgHigh) {
   if ((millis() - servoTimer) > servoPeriod) {
     // Speed Thresholds
     // Adjust the servo speed by chaning the servoPeriod based on the signal amplitude
-    if ((sig > (avgHigh * .5)) && (servoPosition <= 35)) {
+    if ((sig > (avgHigh * .6)) && (servoPosition <= 35)) {
       servoPosition += 5;
       notFlexedFlag = false;
 
@@ -213,7 +215,7 @@ void MoveServo(float sig, float avgHigh) {
       }
       else { // if a notflexed state was previously detected
         // move the servo back to starting position if 500ms have gone by without detecting a flex
-        if ((millis() - notFlexedTimer) > 200) {
+        if ((millis() - notFlexedTimer) > 500) {
           servoPosition = 0;
           sprintf(servoString, "%d", servoPosition);
           client.publish("/reser/rightarm", servoString);
@@ -304,12 +306,14 @@ void loop() {
         //Serial.println(filteredSignal*20);
 
         // turn on led (punch) if signal amplitude is greater than 50% of average high
-        if (MAFSignal > (.4 * averageHigh)) {
+        if (MAFSignal > (.6 * averageHigh)) {
           //if (filteredSignal > (averageHigh / 2)) {
           digitalWrite(ONBOARD_LED, HIGH);
+          client.publish("/reser/leftarm", "30");
         }
         else {
           digitalWrite(ONBOARD_LED, LOW);
+          client.publish("/reser/leftarm", "0");
         }
 
         //MoveServo(MAFSignal, averageHigh);
@@ -322,7 +326,7 @@ void loop() {
         servoTimer = millis();
         }*/
 
-      MoveServo(servoSignal, averageHigh);
+      // MoveServo(servoSignal, averageHigh);
 
       break;
     default:
@@ -340,7 +344,7 @@ void reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Create a random client ID
-    String clientId = "Rightarm";
+    String clientId = "Leftarm";
     // clientId += String(random(0xffff), HEX);
     // Attempt to connect
     if (client.connect(clientId.c_str())) {

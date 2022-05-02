@@ -75,14 +75,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.println(topic);
   Serial.println(servoPosition);
   Serial.println();
-  rightservo.write(servoPosition);
-  if (strcmp(topic, "/reser/rightarm") == 1){
+  if (topic[7] == 'r'){
     rightservo.write(servoPosition);
   }
-  else if (strcmp(topic, "/reser/leftarm") == 1){
+  else if (topic[7] == 'l'){
     leftservo.write(servoPosition);
   }
-  else if (strcmp(topic, "/reser/frontback") == 1){
+  else if (topic[7] == 'b'){
     centerservo.write(servoPosition);
   }
   
@@ -102,6 +101,7 @@ void reconnect() {
       client.publish("/reser/rightarm", "hello world");
       // ... and resubscribe
       client.subscribe("/reser/rightarm");
+      client.subscribe("/reser/leftarm");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
