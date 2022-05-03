@@ -220,6 +220,7 @@ void CheckState() {
 }
 
 // run on every iteration of main loop in filter fsm
+/*
 void MoveServo(float sig, float avgHigh) {
   if ((millis() - servoTimer) > servoPeriod) {
     // Speed Thresholds
@@ -265,7 +266,7 @@ void MoveServo(float sig, float avgHigh) {
 
     servoTimer = millis();
   }
-}
+}*/
 
 void loop() {
   /*if ((millis() - stateTimer) > 200) {
@@ -298,19 +299,19 @@ void loop() {
       if ((period * sampleCount) < 5000) { // sample for 5 seconds
         if ((millis() - sampleTimer) > period) {
           float sensor_value = Sample(INPUT_PIN);
-          float sensor_value2 = Sample(INPUT_PIN2);
+          //float sensor_value2 = Sample(INPUT_PIN2);
 
           float filteredSignal = EMGFilter(sensor_value);
-          float filteredSignal2 = EMGFilter(sensor_value2);
+         // float filteredSignal2 = EMGFilter(sensor_value2);
 
           filteredSignal = abs(filteredSignal);
-          filteredSignal2 = abs(filteredSignal2);
+          //filteredSignal2 = abs(filteredSignal2);
 
           float MAFSignal = MovingAverage(filteredSignal);
-          float MAFSignal2 = MovingAverage2(filteredSignal2);
+         // float MAFSignal2 = MovingAverage2(filteredSignal2);
 
           sumHigh += MAFSignal;
-          sumHigh2 += MAFSignal2;
+          //sumHigh2 += MAFSignal2;
 
           //sumHigh += filteredSignal;
           sampleCount++;
@@ -322,7 +323,7 @@ void loop() {
       if ((period * sampleCount) == 5000) {
         digitalWrite(ONBOARD_LED, LOW);  // turn led on when done sampling for calculating the high average
         averageHigh = sumHigh / sampleCount;
-        averageHigh2 = sumHigh2 / sampleCount;
+        //averageHigh2 = sumHigh2 / sampleCount;
 
         Serial.print("Average High: ");
         Serial.println(averageHigh);
@@ -338,17 +339,17 @@ void loop() {
 
       if ((millis() - sampleTimer) > period) {
         float sensor_value = Sample(INPUT_PIN);
-        float sensor_value2 = Sample(INPUT_PIN2);
+        //float sensor_value2 = Sample(INPUT_PIN2);
 
         //float sensor_value = (analogRead(INPUT_PIN) * HIGH_VOLTAGE) / 4095;
         float filteredSignal = EMGFilter(sensor_value);
-        float filteredSignal2 = EMGFilter(sensor_value2);
+        //float filteredSignal2 = EMGFilter(sensor_value2);
 
         filteredSignal = abs(filteredSignal);
-        filteredSignal2 = abs(filteredSignal2);
+        //filteredSignal2 = abs(filteredSignal2);
 
         float MAFSignal = MovingAverage(filteredSignal);
-        float MAFSignal2 = MovingAverage(filteredSignal2);
+        //float MAFSignal2 = MovingAverage(filteredSignal2);
 
         //Serial.println(filteredSignal);
         Serial.print("MAF Signal: ");
@@ -368,13 +369,14 @@ void loop() {
         }
 
         // Move base back and forth
+        /*
         if (MAFSignal2 > (.6 * averageHigh2)) {
           //if (filteredSignal > (averageHigh / 2)) {
-          client.publish("/reser/bicep", "30");
+          client.publish("/reser/bicep", "20");
         }
         else {
           client.publish("/reser/bicep", "0");
-        }
+        }*/
 
         //MoveServo(MAFSignal, averageHigh);
         //servoSignal = MAFSignal;
